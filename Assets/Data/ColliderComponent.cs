@@ -9,5 +9,4 @@ namespace ECSCollisionSystem
         public uint CollisionLayer;  
         public uint CollisionMask;  
     }
-
 }

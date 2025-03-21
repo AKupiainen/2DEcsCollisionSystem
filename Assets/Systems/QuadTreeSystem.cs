@@ -20,14 +20,6 @@ namespace ECSCollisionSystem
             return aabb.Min.x >= node.Position.x && aabb.Max.x <= node.Position.x + node.Size.x &&
                    aabb.Min.y >= node.Position.y && aabb.Max.y <= node.Position.y + node.Size.y;
         }
-
-        [BurstCompile]
-        public static void CalculateChildPosition(in float2 parentPosition, in float2 halfSize, int childIndex, out float2 result)
-        {
-            float xOffset = (childIndex % 2) * halfSize.x;
-            float yOffset = (childIndex / 2) * halfSize.y;
-            result = parentPosition + new float2(xOffset, yOffset);
-        }
     }
 
     [BurstCompile]

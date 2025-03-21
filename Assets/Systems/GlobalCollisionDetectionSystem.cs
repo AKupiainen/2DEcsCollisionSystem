@@ -9,14 +9,10 @@ namespace ECSCollisionSystem
     [BurstCompile, UpdateAfter(typeof(QuadtreeSubdivisionSystem))]
     public partial class GlobalCollisionDetectionSystem : SystemBase
     {
-        private EntityQuery _colliderQuery;
         private EntityCommandBuffer _ecb;
         
         protected override void OnCreate()
         {
-            _colliderQuery = SystemAPI.QueryBuilder().WithAll<ColliderComponent, CollisionProcessingTag>().Build();
-            
-            // Make sure entities that need collision events have the buffer
             RequireForUpdate<QuadtreeNodeComponent>();
         }
         
@@ -29,24 +25,21 @@ namespace ECSCollisionSystem
             BufferLookup<ActiveCollision> activeCollisions = GetBufferLookup<ActiveCollision>();
             ComponentLookup<ColliderComponent> colliders = GetComponentLookup<ColliderComponent>(true);
             ComponentLookup<QuadtreeNodeComponent> nodes = GetComponentLookup<QuadtreeNodeComponent>(true);
-            
-            // Get all quadtree nodes
+
             NativeList<Entity> allNodes = new(Allocator.Temp);
             allNodes.CopyFrom(SystemAPI.QueryBuilder().WithAll<QuadtreeNodeComponent>().Build()
                 .ToEntityArray(Allocator.Temp));
             
-            // Process entities that need collision detection
             Entities.WithoutBurst().ForEach((Entity entity, ref ColliderComponent collider) =>
             {
-                // Create active collision buffer if it doesn't exist
                 if (!activeCollisions.HasBuffer(entity))
                 {
                     _ecb.AddBuffer<ActiveCollision>(entity);
-                    return; // Skip this frame, process after buffer is created
+                    return; 
                 }
                 
-                // Find the quadtree node this entity belongs to
                 Entity containingNode = Entity.Null;
+                
                 foreach (Entity nodeEntity in allNodes)
                 {
                     if (nodes.HasComponent(nodeEntity) && 
@@ -63,20 +56,24 @@ namespace ECSCollisionSystem
                 }
                 
                 DynamicBuffer<ActiveCollision> activeCollisionsBuffer = activeCollisions[entity];
-                
                 DynamicBuffer<QuadtreeEntityBuffer> nodeEntities = quadtreeBuffers[containingNode];
                 
                 for (int i = 0; i < nodeEntities.Length; i++)
                 {
                     Entity otherEntity = nodeEntities[i].Entity;
                     
-                    if (otherEntity == entity) continue;
-                    
-                    if (!colliders.HasComponent(otherEntity)) continue;
-                    
+                    if (otherEntity == entity)
+                    {
+                        continue;
+                    }
+
+                    if (!colliders.HasComponent(otherEntity))
+                    {
+                        continue;
+                    }
+
                     ColliderComponent otherCollider = colliders[otherEntity];
                     
-                    // Check collision layers
                     if ((collider.CollisionLayer & otherCollider.CollisionMask) == 0 &&
                         (otherCollider.CollisionLayer & collider.CollisionMask) == 0)
                     {
@@ -87,7 +84,7 @@ namespace ECSCollisionSystem
                     {
                         if (GlobalCollisionManager.Instance != null)
                         {
-                            CollisionInfo info = new CollisionInfo
+                            CollisionInfo info = new()
                             {
                                 ContactPoint = new Vector2(collisionInfo.x, collisionInfo.y),
                                 Normal = new Vector2(collisionInfo.z, collisionInfo.w),
@@ -97,8 +94,8 @@ namespace ECSCollisionSystem
                             GlobalCollisionManager.Instance.AddCollision(entity, otherEntity, info);
                         }
                         
-                        // Still maintain the ActiveCollision buffer for ECS-only systems
                         bool isNew = true;
+                        
                         for (int j = 0; j < activeCollisionsBuffer.Length; j++)
                         {
                             if (activeCollisionsBuffer[j].CollidingEntity == otherEntity)
@@ -133,7 +130,6 @@ namespace ECSCollisionSystem
             allNodes.Dispose();
         }
         
-        // Enhanced collision check that returns contact information
         private bool CheckAABBCollision(AABBComponent a, AABBComponent b, out float4 collisionInfo)
         {
             collisionInfo = float4.zero;

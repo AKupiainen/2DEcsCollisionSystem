@@ -5,7 +5,6 @@ using UnityEngine;
 
 namespace ECSCollisionSystem
 {
-    
     public class ColliderAuthoring : MonoBehaviour
     {
         [Header("AABB Configuration")] [SerializeField]
@@ -26,7 +25,7 @@ namespace ECSCollisionSystem
 
         private Entity _entity;
         private EntityManager _entityManager;
-        private bool _initialized = false;
+        private bool _initialized;
         
         public Entity Entity => _entity;
         
@@ -55,12 +54,6 @@ namespace ECSCollisionSystem
             if (_initialized)
             {
                 return;
-            }
-
-            if (GlobalCollisionManager.Instance == null)
-            {
-                var managerGO = new GameObject("GlobalCollisionManager");
-                managerGO.AddComponent<GlobalCollisionManager>();
             }
 
             if (World.DefaultGameObjectInjectionWorld != null)
@@ -167,13 +160,21 @@ namespace ECSCollisionSystem
             OnCollisionExit?.Invoke(other, info);
             HandleCollisionExit(other, info);
         }
-        
-        protected virtual void HandleCollisionEnter(Entity other, CollisionInfo info) { }
 
-        protected virtual void HandleCollisionStay(Entity other, CollisionInfo info) { }
+        protected virtual void HandleCollisionEnter(Entity other, CollisionInfo info)
+        {
+            Debug.Log("Collision Enter");
+        }
 
-        protected virtual void HandleCollisionExit(Entity other, CollisionInfo info) { }
-        
+        protected virtual void HandleCollisionStay(Entity other, CollisionInfo info)
+        {
+            Debug.Log("Collision Stay");
+        }
+
+        protected virtual void HandleCollisionExit(Entity other, CollisionInfo info)
+        {
+            Debug.Log("Collision Exit");
+        }
         
         public void SetAABBSize(Vector2 newSize)
         {
@@ -216,7 +217,7 @@ namespace ECSCollisionSystem
 
                 if (_entityManager.HasComponent<CollisionCallbacksComponent>(_entity))
                 {
-                    var callbacks = _entityManager.GetComponentData<CollisionCallbacksComponent>(_entity);
+                    CollisionCallbacksComponent callbacks = _entityManager.GetComponentData<CollisionCallbacksComponent>(_entity);
                     callbacks.Dispose();
                 }
 
