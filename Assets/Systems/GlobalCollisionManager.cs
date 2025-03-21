@@ -113,12 +113,13 @@ namespace ECSCollisionSystem
         public void ProcessEndOfFrameCollisions()
         {
             float currentTime = Time.time;
+            float threshold = currentTime - Time.deltaTime;
 
             for (int i = _activeCollisions.Count - 1; i >= 0; i--)
             {
                 CollisionState collision = _activeCollisions[i];
 
-                if (collision.LastContact < currentTime - Time.deltaTime)
+                if (collision.LastContact < threshold)
                 {
                     NotifyExit(collision.EntityA, collision.EntityB, collision.Info);
                     _activeCollisions.RemoveAt(i);
