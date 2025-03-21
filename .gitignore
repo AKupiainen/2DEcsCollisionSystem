@@ -74,3 +74,6 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 .DS_Store
 Assets/.DS_Store
+.idea/.idea.2DEcsCollisionSystem/.idea/encodings.xml
+.idea/.idea.2DEcsCollisionSystem/.idea/indexLayout.xml
+.idea/.idea.2DEcsCollisionSystem/.idea/vcs.xml
