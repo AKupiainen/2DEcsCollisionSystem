@@ -12,21 +12,21 @@ namespace ECSCollisionSystem
     }
 
     [BurstCompile]
-    public static class QuadtreeUtils
+    public static partial class QuadtreeUtils
     {
         [BurstCompile]
-        public static bool IsAABBInsideNode(AABBComponent aabb, QuadtreeNodeComponent node)
+        public static bool IsAABBInsideNode(in AABBComponent aabb, in QuadtreeNodeComponent node)
         {
             return aabb.Min.x >= node.Position.x && aabb.Max.x <= node.Position.x + node.Size.x &&
                    aabb.Min.y >= node.Position.y && aabb.Max.y <= node.Position.y + node.Size.y;
         }
 
         [BurstCompile]
-        public static float2 CalculateChildPosition(float2 parentPosition, float2 halfSize, int childIndex)
+        public static void CalculateChildPosition(in float2 parentPosition, in float2 halfSize, int childIndex, out float2 result)
         {
             float xOffset = (childIndex % 2) * halfSize.x;
             float yOffset = (childIndex / 2) * halfSize.y;
-            return parentPosition + new float2(xOffset, yOffset);
+            result = parentPosition + new float2(xOffset, yOffset);
         }
     }
 
@@ -45,11 +45,12 @@ namespace ECSCollisionSystem
             NativeList<Entity> allNodes = new(Allocator.Temp);
             allNodes.CopyFrom(SystemAPI.QueryBuilder().WithAll<QuadtreeNodeComponent>().Build().ToEntityArray(Allocator.Temp));
 
-            Entities.WithoutBurst().ForEach((Entity entity, ref AABBComponent aabb) =>
+            Entities.ForEach((Entity entity, ref AABBComponent aabb) =>
             {
                 foreach (Entity nodeEntity in allNodes)
                 {
                     QuadtreeNodeComponent node = quadtreeNodes[nodeEntity];
+                    
                     if (QuadtreeUtils.IsAABBInsideNode(aabb, node) && entityBuffers.HasBuffer(nodeEntity))
                     {
                         DynamicBuffer<QuadtreeEntityBuffer> buffer = entityBuffers[nodeEntity];
@@ -91,7 +92,7 @@ namespace ECSCollisionSystem
             NativeList<Entity> allNodes = new(Allocator.Temp);
             allNodes.CopyFrom(_nodeQuery.ToEntityArray(Allocator.Temp));
 
-            Entities.WithoutBurst().ForEach((Entity nodeEntity, in NeedsSubdivisionTag _) =>
+            Entities.ForEach((Entity nodeEntity, in NeedsSubdivisionTag _) =>
             {
                 QuadtreeNodeComponent node = quadtreeNodes[nodeEntity];
                 float2 halfSize = node.Size / 2;
@@ -99,9 +100,15 @@ namespace ECSCollisionSystem
                 for (int i = 0; i < 4; i++)
                 {
                     Entity childNodeEntity = ecb.CreateEntity();
+                    
+                    float xOffset = (i % 2) * halfSize.x;
+                    float yOffset = (i / 2) * halfSize.y;
+                    
+                    float2 childPosition = node.Position + new float2(xOffset, yOffset);
+                    
                     ecb.AddComponent(childNodeEntity, new QuadtreeNodeComponent
                     {
-                        Position = QuadtreeUtils.CalculateChildPosition(node.Position, halfSize, i),
+                        Position = childPosition,
                         Size = halfSize
                     });
                     ecb.AddBuffer<QuadtreeEntityBuffer>(childNodeEntity);
@@ -119,7 +126,7 @@ namespace ECSCollisionSystem
                 ecb.RemoveComponent<NeedsSubdivisionTag>(nodeEntity);
             }).Run();
 
-            Entities.WithoutBurst().ForEach((Entity entity, in PendingInsertionComponent pending, in AABBComponent aabb) =>
+            Entities.ForEach((Entity entity, in PendingInsertionComponent pending, in AABBComponent aabb) =>
             {
                 if (quadtreeNodes.HasComponent(pending.TargetNode) && entityBuffers.HasBuffer(pending.TargetNode))
                 {
@@ -135,6 +142,7 @@ namespace ECSCollisionSystem
                 foreach (Entity nodeEntity in allNodes)
                 {
                     QuadtreeNodeComponent node = quadtreeNodes[nodeEntity];
+
                     if (QuadtreeUtils.IsAABBInsideNode(aabb, node) && entityBuffers.HasBuffer(nodeEntity))
                     {
                         DynamicBuffer<QuadtreeEntityBuffer> buffer = entityBuffers[nodeEntity];
